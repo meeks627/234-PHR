@@ -1,0 +1,9 @@
+[global]
+developmentMode = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1565C0"
+backgroundColor = "#f0f4f8"
