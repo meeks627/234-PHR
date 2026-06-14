@@ -3,7 +3,7 @@ import time
 import random
 from datetime import datetime, date
 
-st.set_page_config(page_title="MediVault PHR Pro", page_icon="🏥", layout="wide")
+st.set_page_config(page_title="medID", page_icon="🆔", layout="wide")
 
 st.markdown("""
 <style>
@@ -102,6 +102,16 @@ button[kind="primary"] {
 .emoji { font-size: 1.5em !important; }
 h1 .emoji { font-size: 2rem !important; }
 .badge-green, .badge-red, .badge-blue { font-size: 0.9rem !important; }
+.fp-container { text-align: center; padding: 1rem 0; }
+.fp-svg { width: 64px; height: 64px; cursor: pointer; transition: all 0.3s; }
+.fp-svg:hover { transform: scale(1.1); }
+.fp-svg-idle .fp-outer { stroke: #999; } .fp-svg-idle .fp-inner { fill: #999; }
+.fp-svg-scanning .fp-outer { stroke: #1565C0; } .fp-svg-scanning .fp-inner { fill: #1565C0; }
+.fp-svg-scanning { animation: fp-pulse 0.8s ease-in-out infinite; }
+.fp-svg-success .fp-outer { stroke: #2e7d32; } .fp-svg-success .fp-inner { fill: #2e7d32; }
+.fp-svg-fail .fp-outer { stroke: #c62828; } .fp-svg-fail .fp-inner { fill: #c62828; }
+@keyframes fp-pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+.fp-status { font-size: 0.9rem; margin-top: 0.3rem; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -112,142 +122,147 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 if "gemini_api_key" not in st.session_state:
     st.session_state.gemini_api_key = GEMINI_API_KEY
 
-# ── DATABASES ──
-PATIENTS = {
-    "MH-001": {
-        "patient_id": "MH-001", "name": "Amina Yusuf", "age": 29, "gender": "Female",
-        "blood_group": "O+", "allergies": ["Penicillin"],
-        "conditions": ["Asthma", "Pregnancy (3rd trimester)"],
-        "medications": ["Salbutamol", "Iron supplements"],
-        "medical_history": [
-            {"hospital": "Lagos University Teaching Hospital", "date": "2026-01-15",
-             "diagnosis": "Hypertensive urgency",
-             "notes": "Presented with elevated BP 160/100 and headache. Started on Amlodipine 5mg daily. Advised salt restriction and bed rest.",
-             "medications_prescribed": ["Amlodipine 5mg"], "doctor": "Dr. Adebayo", "department": "Cardiology"},
-            {"hospital": "General Hospital Abuja", "date": "2026-03-10",
-             "diagnosis": "Antenatal checkup — 28 weeks",
-             "notes": "BP stable at 128/84. Fetal heart rate normal. Iron supplements continued.",
-             "medications_prescribed": ["Iron supplements"], "doctor": "Dr. Ngozi", "department": "OB/GYN"},
-            {"hospital": "Lagos University Teaching Hospital", "date": "2026-04-20",
-             "diagnosis": "Mild asthma exacerbation",
-             "notes": "Wheezing and SOB for 2 days. Salbutamol increased. Prednisolone 40mg prescribed.",
-             "medications_prescribed": ["Prednisolone 40mg", "Salbutamol PRN"], "doctor": "Dr. Adebayo", "department": "Respiratory"},
-            {"hospital": "General Hospital Abuja", "date": "2026-06-05",
-             "diagnosis": "Antenatal checkup — 34 weeks",
-             "notes": "BP 130/86. Mild pedal edema. Urinalysis negative. Delivery planning discussed.",
-             "medications_prescribed": ["Salbutamol", "Iron supplements"], "doctor": "Dr. Ngozi", "department": "OB/GYN"}
-        ],
-        "emergency_contact": "Husband - 08012345678", "nin_linked": "YES", "pin": "1234"
-    },
-    "MH-002": {
-        "patient_id": "MH-002", "name": "John Okafor", "age": 45, "gender": "Male",
-        "blood_group": "A+", "allergies": [],
-        "conditions": ["Type 2 Diabetes"],
-        "medications": ["Metformin"],
-        "medical_history": [
-            {"hospital": "Lagos University Teaching Hospital", "date": "2025-02-03",
-             "diagnosis": "New-onset Type 2 Diabetes",
-             "notes": "FBG 11.2 mmol/L, HbA1c 8.5%. Started Metformin 500mg bid.",
-             "medications_prescribed": ["Metformin 500mg"], "doctor": "Dr. Okafor", "department": "Endocrinology"},
-            {"hospital": "General Hospital Abuja", "date": "2025-08-12",
-             "diagnosis": "Diabetes follow-up",
-             "notes": "HbA1c improved to 7.2%. Metformin increased to 850mg bid.",
-             "medications_prescribed": ["Metformin 850mg"], "doctor": "Dr. Eze", "department": "Endocrinology"},
-            {"hospital": "Lagos University Teaching Hospital", "date": "2026-01-20",
-             "diagnosis": "Hyperglycemic episode",
-             "notes": "Glucose 18.5 mmol/L. Managed with IV fluids and insulin. Admitted 2 days.",
-             "medications_prescribed": ["Metformin 1g", "Insulin (temporary)"], "doctor": "Dr. Adebayo", "department": "Emergency"},
-            {"hospital": "General Hospital Abuja", "date": "2026-05-15",
-             "diagnosis": "Routine diabetes review",
-             "notes": "HbA1c 6.9%. BP 128/82. No complications detected.",
-             "medications_prescribed": ["Metformin 1g"], "doctor": "Dr. Eze", "department": "Endocrinology"}
-        ],
-        "emergency_contact": "Wife - 08098765432", "nin_linked": "YES", "pin": "1234"
-    },
-    "MH-003": {
-        "patient_id": "MH-003", "name": "Fatima Bello", "age": 60, "gender": "Female",
-        "blood_group": "B+", "allergies": ["Aspirin"],
-        "conditions": ["Hypertension", "Stroke history"],
-        "medications": ["Amlodipine"],
-        "medical_history": [
-            {"hospital": "Lagos University Teaching Hospital", "date": "2022-03-22",
-             "diagnosis": "Acute ischemic stroke",
-             "notes": "Left-sided weakness. CT: small MCA infarct. Thrombolysis given. Admitted 5 days.",
-             "medications_prescribed": ["Aspirin 75mg", "Amlodipine 5mg", "Atorvastatin 20mg"], "doctor": "Dr. Adebayo", "department": "Neurology"},
-            {"hospital": "General Hospital Abuja", "date": "2023-09-10",
-             "diagnosis": "Post-stroke follow-up",
-             "notes": "Modified Rankin 1. Aspirin stopped — switched to Clopidogrel.",
-             "medications_prescribed": ["Clopidogrel 75mg", "Amlodipine 5mg", "Atorvastatin 20mg"], "doctor": "Dr. Ngozi", "department": "Neurology"},
-            {"hospital": "Lagos University Teaching Hospital", "date": "2024-01-05",
-             "diagnosis": "Hypertension review",
-             "notes": "BP 142/88. Amlodipine increased to 10mg.",
-             "medications_prescribed": ["Amlodipine 10mg", "Clopidogrel 75mg", "Atorvastatin 20mg"], "doctor": "Dr. Adebayo", "department": "Cardiology"},
-            {"hospital": "General Hospital Abuja", "date": "2026-04-30",
-             "diagnosis": "Routine BP check",
-             "notes": "BP 130/82. Patient well. Continue current regimen.",
-             "medications_prescribed": ["Amlodipine 10mg", "Clopidogrel 75mg", "Atorvastatin 20mg"], "doctor": "Dr. Eze", "department": "General Medicine"}
-        ],
-        "emergency_contact": "Son - 08055512345", "nin_linked": "NO", "pin": "1234"
-    },
-    "MH-004": {
-        "patient_id": "MH-004", "name": "David Ijeoma", "age": 12, "gender": "Male",
-        "blood_group": "O-", "allergies": ["Peanut allergy"],
-        "conditions": ["Severe asthma"],
-        "medications": ["Ventolin inhaler"],
-        "medical_history": [
-            {"hospital": "Lagos University Teaching Hospital", "date": "2025-03-05",
-             "diagnosis": "Acute severe asthma",
-             "notes": "SpO2 88%. Nebulized Salbutamol + Ipratropium. Admitted 3 days.",
-             "medications_prescribed": ["Nebulized Salbutamol", "Beclometasone inhaler"], "doctor": "Dr. Okoro", "department": "Pediatrics"},
-            {"hospital": "General Hospital Abuja", "date": "2025-07-14",
-             "diagnosis": "Asthma follow-up",
-             "notes": "Peak flow 65%. Ventolin 2-3x/week. Inhaler technique reviewed.",
-             "medications_prescribed": ["Beclometasone inhaler", "Ventolin PRN"], "doctor": "Dr. Ngozi", "department": "Pediatrics"},
-            {"hospital": "Lagos University Teaching Hospital", "date": "2025-12-01",
-             "diagnosis": "Anaphylaxis — peanut",
-             "notes": "Epinephrine given at school. Observed 6h. Epi-pen prescribed.",
-             "medications_prescribed": ["Epinephrine auto-injector", "Cetirizine"], "doctor": "Dr. Okoro", "department": "Emergency"},
-            {"hospital": "General Hospital Abuja", "date": "2026-02-20",
-             "diagnosis": "Asthma review — well controlled",
-             "notes": "Peak flow 82%. Ventolin <2x/week. Action plan updated.",
-             "medications_prescribed": ["Beclometasone inhaler", "Ventolin PRN"], "doctor": "Dr. Eze", "department": "Pediatrics"}
-        ],
-        "emergency_contact": "Mother - 08044467890", "nin_linked": "YES", "pin": "1234"
+# ── DATABASES (session-persisted) ──
+if "PATIENTS" not in st.session_state:
+    st.session_state.PATIENTS = {
+        "MH-001": {
+            "patient_id": "MH-001", "name": "Amina Yusuf", "age": 29, "gender": "Female",
+            "blood_group": "O+", "allergies": ["Penicillin"],
+            "conditions": ["Asthma", "Pregnancy (3rd trimester)"],
+            "medications": ["Salbutamol", "Iron supplements"],
+            "medical_history": [
+                {"hospital": "Lagos University Teaching Hospital", "date": "2026-01-15",
+                 "diagnosis": "Hypertensive urgency",
+                 "notes": "Presented with elevated BP 160/100 and headache. Started on Amlodipine 5mg daily. Advised salt restriction and bed rest.",
+                 "medications_prescribed": ["Amlodipine 5mg"], "doctor": "Dr. Adebayo", "department": "Cardiology"},
+                {"hospital": "General Hospital Abuja", "date": "2026-03-10",
+                 "diagnosis": "Antenatal checkup — 28 weeks",
+                 "notes": "BP stable at 128/84. Fetal heart rate normal. Iron supplements continued.",
+                 "medications_prescribed": ["Iron supplements"], "doctor": "Dr. Ngozi", "department": "OB/GYN"},
+                {"hospital": "Lagos University Teaching Hospital", "date": "2026-04-20",
+                 "diagnosis": "Mild asthma exacerbation",
+                 "notes": "Wheezing and SOB for 2 days. Salbutamol increased. Prednisolone 40mg prescribed.",
+                 "medications_prescribed": ["Prednisolone 40mg", "Salbutamol PRN"], "doctor": "Dr. Adebayo", "department": "Respiratory"},
+                {"hospital": "General Hospital Abuja", "date": "2026-06-05",
+                 "diagnosis": "Antenatal checkup — 34 weeks",
+                 "notes": "BP 130/86. Mild pedal edema. Urinalysis negative. Delivery planning discussed.",
+                 "medications_prescribed": ["Salbutamol", "Iron supplements"], "doctor": "Dr. Ngozi", "department": "OB/GYN"}
+            ],
+            "emergency_contact": "Husband - 08012345678", "nin_linked": "YES", "pin": "1234"
+        },
+        "MH-002": {
+            "patient_id": "MH-002", "name": "John Okafor", "age": 45, "gender": "Male",
+            "blood_group": "A+", "allergies": [],
+            "conditions": ["Type 2 Diabetes"],
+            "medications": ["Metformin"],
+            "medical_history": [
+                {"hospital": "Lagos University Teaching Hospital", "date": "2025-02-03",
+                 "diagnosis": "New-onset Type 2 Diabetes",
+                 "notes": "FBG 11.2 mmol/L, HbA1c 8.5%. Started Metformin 500mg bid.",
+                 "medications_prescribed": ["Metformin 500mg"], "doctor": "Dr. Okafor", "department": "Endocrinology"},
+                {"hospital": "General Hospital Abuja", "date": "2025-08-12",
+                 "diagnosis": "Diabetes follow-up",
+                 "notes": "HbA1c improved to 7.2%. Metformin increased to 850mg bid.",
+                 "medications_prescribed": ["Metformin 850mg"], "doctor": "Dr. Eze", "department": "Endocrinology"},
+                {"hospital": "Lagos University Teaching Hospital", "date": "2026-01-20",
+                 "diagnosis": "Hyperglycemic episode",
+                 "notes": "Glucose 18.5 mmol/L. Managed with IV fluids and insulin. Admitted 2 days.",
+                 "medications_prescribed": ["Metformin 1g", "Insulin (temporary)"], "doctor": "Dr. Adebayo", "department": "Emergency"},
+                {"hospital": "General Hospital Abuja", "date": "2026-05-15",
+                 "diagnosis": "Routine diabetes review",
+                 "notes": "HbA1c 6.9%. BP 128/82. No complications detected.",
+                 "medications_prescribed": ["Metformin 1g"], "doctor": "Dr. Eze", "department": "Endocrinology"}
+            ],
+            "emergency_contact": "Wife - 08098765432", "nin_linked": "YES", "pin": "1234"
+        },
+        "MH-003": {
+            "patient_id": "MH-003", "name": "Fatima Bello", "age": 60, "gender": "Female",
+            "blood_group": "B+", "allergies": ["Aspirin"],
+            "conditions": ["Hypertension", "Stroke history"],
+            "medications": ["Amlodipine"],
+            "medical_history": [
+                {"hospital": "Lagos University Teaching Hospital", "date": "2022-03-22",
+                 "diagnosis": "Acute ischemic stroke",
+                 "notes": "Left-sided weakness. CT: small MCA infarct. Thrombolysis given. Admitted 5 days.",
+                 "medications_prescribed": ["Aspirin 75mg", "Amlodipine 5mg", "Atorvastatin 20mg"], "doctor": "Dr. Adebayo", "department": "Neurology"},
+                {"hospital": "General Hospital Abuja", "date": "2023-09-10",
+                 "diagnosis": "Post-stroke follow-up",
+                 "notes": "Modified Rankin 1. Aspirin stopped — switched to Clopidogrel.",
+                 "medications_prescribed": ["Clopidogrel 75mg", "Amlodipine 5mg", "Atorvastatin 20mg"], "doctor": "Dr. Ngozi", "department": "Neurology"},
+                {"hospital": "Lagos University Teaching Hospital", "date": "2024-01-05",
+                 "diagnosis": "Hypertension review",
+                 "notes": "BP 142/88. Amlodipine increased to 10mg.",
+                 "medications_prescribed": ["Amlodipine 10mg", "Clopidogrel 75mg", "Atorvastatin 20mg"], "doctor": "Dr. Adebayo", "department": "Cardiology"},
+                {"hospital": "General Hospital Abuja", "date": "2026-04-30",
+                 "diagnosis": "Routine BP check",
+                 "notes": "BP 130/82. Patient well. Continue current regimen.",
+                 "medications_prescribed": ["Amlodipine 10mg", "Clopidogrel 75mg", "Atorvastatin 20mg"], "doctor": "Dr. Eze", "department": "General Medicine"}
+            ],
+            "emergency_contact": "Son - 08055512345", "nin_linked": "NO", "pin": "1234"
+        },
+        "MH-004": {
+            "patient_id": "MH-004", "name": "David Ijeoma", "age": 12, "gender": "Male",
+            "blood_group": "O-", "allergies": ["Peanut allergy"],
+            "conditions": ["Severe asthma"],
+            "medications": ["Ventolin inhaler"],
+            "medical_history": [
+                {"hospital": "Lagos University Teaching Hospital", "date": "2025-03-05",
+                 "diagnosis": "Acute severe asthma",
+                 "notes": "SpO2 88%. Nebulized Salbutamol + Ipratropium. Admitted 3 days.",
+                 "medications_prescribed": ["Nebulized Salbutamol", "Beclometasone inhaler"], "doctor": "Dr. Okoro", "department": "Pediatrics"},
+                {"hospital": "General Hospital Abuja", "date": "2025-07-14",
+                 "diagnosis": "Asthma follow-up",
+                 "notes": "Peak flow 65%. Ventolin 2-3x/week. Inhaler technique reviewed.",
+                 "medications_prescribed": ["Beclometasone inhaler", "Ventolin PRN"], "doctor": "Dr. Ngozi", "department": "Pediatrics"},
+                {"hospital": "Lagos University Teaching Hospital", "date": "2025-12-01",
+                 "diagnosis": "Anaphylaxis — peanut",
+                 "notes": "Epinephrine given at school. Observed 6h. Epi-pen prescribed.",
+                 "medications_prescribed": ["Epinephrine auto-injector", "Cetirizine"], "doctor": "Dr. Okoro", "department": "Emergency"},
+                {"hospital": "General Hospital Abuja", "date": "2026-02-20",
+                 "diagnosis": "Asthma review — well controlled",
+                 "notes": "Peak flow 82%. Ventolin <2x/week. Action plan updated.",
+                 "medications_prescribed": ["Beclometasone inhaler", "Ventolin PRN"], "doctor": "Dr. Eze", "department": "Pediatrics"}
+            ],
+            "emergency_contact": "Mother - 08044467890", "nin_linked": "YES", "pin": "1234"
+        }
     }
-}
 
-HOSPITALS = {
-    "HOSP-001": {"name": "Lagos University Teaching Hospital", "admin_pin": "0000"},
-    "HOSP-002": {"name": "Abuja General Hospital", "admin_pin": "0000"}
-}
+if "HOSPITALS" not in st.session_state:
+    st.session_state.HOSPITALS = {
+        "HOSP-001": {"name": "Lagos University Teaching Hospital", "admin_pin": "0000"},
+        "HOSP-002": {"name": "Abuja General Hospital", "admin_pin": "0000"}
+    }
 
 # ── SESSION STATE ──
 for key, val in {
     "hosp_auth": False, "hosp_code": "", "hospital_target": None,
     "hosp_access_granted": False, "active_patient": None,
     "chat_history": [], "summary": None, "edit_mode": False,
+    "fp_status": "idle", "fp_patient": None,
+    "access_consent": False, "access_reason": "", "access_doctor": "",
+    "reg_success": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
 # ── HELPERS ──
 def get_patient(pid):
-    return PATIENTS.get(pid)
+    return st.session_state.PATIENTS.get(pid)
 
 def auth_hospital(code, pin):
-    h = HOSPITALS.get(code)
+    h = st.session_state.HOSPITALS.get(code)
     return h and h["admin_pin"] == pin
 
 def update_patient(pid, updates):
-    if pid in PATIENTS:
+    if pid in st.session_state.PATIENTS:
         for k, v in updates.items():
-            PATIENTS[pid][k] = v
+            st.session_state.PATIENTS[pid][k] = v
         return True
     return False
 
 def add_history_entry(pid, entry):
-    if pid in PATIENTS:
-        PATIENTS[pid]["medical_history"].append(entry)
+    if pid in st.session_state.PATIENTS:
+        st.session_state.PATIENTS[pid]["medical_history"].append(entry)
         return True
     return False
 
@@ -279,69 +294,54 @@ def call_gemini(prompt):
 def chatbot_respond(patient, query):
     if gemini_available():
         ctx = (
-            f"You are a clinical AI assistant. Answer concisely using only the data provided.\n\n"
-            f"PATIENT: {patient['name']}, {patient['age']}yo, {patient['gender']}\n"
+            f"Answer the question directly using the patient data below. "
+            f"Do NOT repeat the question. Do NOT use phrases like 'Based on the data' or 'According to the records'. "
+            f"Just give a short, precise answer.\n\n"
+            f"Patient: {patient['name']}, {patient['age']}yo, {patient['gender']}\n"
             f"Blood: {patient['blood_group']} | Allergies: {', '.join(patient['allergies'])}\n"
             f"Conditions: {', '.join(patient['conditions'])} | Meds: {', '.join(patient['medications'])}\n\n"
-            f"HISTORY:\n{format_history_for_prompt(patient.get('medical_history', []))}\n\n"
-            f"QUESTION: {query}\n\nAnswer concisely referencing specific data."
+            f"History:\n{format_history_for_prompt(patient.get('medical_history', []))}\n\n"
+            f"Q: {query}\nA:"
         )
         r = call_gemini(ctx)
         if r:
             return r
 
     q = query.lower()
-    if "summarize" in q and ("visit" in q or "history" in q):
-        h = patient.get("medical_history", [])
-        if not h:
-            return "No records."
-        parts = ["**📋 All Visits**"]
-        for v in reversed(h):
-            parts.append(f"**{v['date']}** — {v['hospital']}: {v['diagnosis']}")
-        return "\n\n".join(parts)
-    if "timeline" in q:
-        h = patient.get("medical_history", [])
-        return "**Timeline:**\n" + "\n".join(f"• {v['date']} — {v['diagnosis']}" for v in h) if h else "None"
     if "allerg" in q:
         a = patient.get("allergies", [])
-        return f"**Allergies:** {', '.join(a) if a else 'None known'}"
+        return f"{', '.join(a) if a else 'No known allergies'}"
     if "medication" in q or "drug" in q or "prescri" in q:
         m = patient.get("medications", [])
-        return f"**Current Meds:** {', '.join(m) if m else 'None'}"
+        return f"{', '.join(m) if m else 'No current medications'}"
     if "condition" in q or "chronic" in q or "diagnos" in q:
         c = patient.get("conditions", [])
-        return f"**Conditions:** {', '.join(c) if c else 'None'}"
-    if "risk" in q:
-        parts = [f"• {c}" for c in patient.get("conditions", [])]
-        for a in patient.get("allergies", []):
-            parts.append(f"• Allergy: {a}")
-        h = patient.get("medical_history", [])
-        if h:
-            parts.append(f"• {len(h)} prior visits")
-        return "**Risk Factors:**\n" + ("\n".join(parts) if parts else "None")
-    if "emergency" in q:
-        parts = [f"• {c}" for c in patient.get("conditions", [])]
-        for a in patient.get("allergies", []):
-            parts.append(f"• Allergy risk: {a}")
-        return "**Emergency Concerns:**\n" + ("\n".join(parts) if parts else "None")
-    if "history" in q or "past" in q:
+        return f"{', '.join(c) if c else 'No chronic conditions'}"
+    if "history" in q or "past" in q or "visit" in q:
         h = patient.get("medical_history", [])
         if not h:
-            return "No records."
-        return f"**Most Recent:** {h[-1]['date']} — {h[-1]['hospital']}: {h[-1]['diagnosis']}"
+            return "No medical history on record"
+        return f"Most recent: {h[-1]['date']} at {h[-1]['hospital']} — {h[-1]['diagnosis']}. Total: {len(h)} visit(s)."
+    if "summarize" in q:
+        h = patient.get("medical_history", [])
+        parts = [f"{v['date']} — {v['hospital']}: {v['diagnosis']}" for v in reversed(h)]
+        return "\n".join(parts) if parts else "No records"
+    if "risk" in q or "emergency" in q:
+        items = list(patient.get("conditions", []))
+        items += [f"Allergy: {a}" for a in patient.get("allergies", [])]
+        return ", ".join(items) if items else "No significant risks identified"
     if "blood" in q or "group" in q:
-        return f"**Blood Group:** {patient['blood_group']}"
+        return patient['blood_group']
     if "contact" in q:
-        return f"**Emergency Contact:** {patient.get('emergency_contact', 'N/A')}"
-    return (f"**{patient['name']}** ({patient['age']}yo, {patient['blood_group']}) | "
-            f"Conditions: {', '.join(patient.get('conditions', ['None']))}")
+        return patient.get('emergency_contact', 'N/A')
+    return f"{patient['name']}, {patient['age']}yo, {patient['blood_group']}. Conditions: {', '.join(patient.get('conditions', ['None']))}"
 
 def generate_summary(p):
     if gemini_available():
         prompt = (
-            f"Generate a structured clinical summary with sections: "
-            f"## Clinical Summary, ### Key Conditions, ### Treatment Timeline, "
-            f"### Risk Factors, ### Medication Warnings, ### Emergency Alerts.\n\n"
+            f"You are a doctor's clinical assistant. Generate a VERY BRIEF summary (max 5 bullet points). "
+            f"Focus ONLY on: critical conditions, emergency risks, cross-hospital medication conflicts, "
+            f"and immediate action items. No greetings, no fluff.\n\n"
             f"Patient: {p['name']}, {p['age']}yo, {p['gender']}, Blood {p['blood_group']}\n"
             f"Allergies: {', '.join(p['allergies'])}\n"
             f"Conditions: {', '.join(p['conditions'])}\n"
@@ -353,34 +353,26 @@ def generate_summary(p):
         if r:
             return r
     h = p.get("medical_history", [])
+    alerts = []
+    for c in p['conditions']:
+        alerts.append(f"🚨 {c}")
+    for a in p.get('allergies', []):
+        alerts.append(f"⚠️ Allergy: {a}")
+    timeline = "\n".join(f"- {v['date']} — {v['hospital']}: {v['diagnosis']}" for v in h[-3:]) if h else "None"
     lines = [
-        "## 🏥 Clinical Summary",
-        f"**Patient:** {p['name']} ({p['age']}y, {p['gender']}) — Blood {p['blood_group']}",
-        f"**NIN:** {'✅ Linked' if p['nin_linked']=='YES' else '❌ Not linked'}",
+        "### Critical Conditions & Alerts",
+        "\n".join(alerts) if alerts else "None",
         "",
-        "### Key Conditions",
+        "### Recent Visits (Last 3)",
+        timeline,
+        "",
+        "### Current Medications",
+        ", ".join(p['medications']) if p['medications'] else "None",
+        "",
+        f"**Blood:** {p['blood_group']} | **NIN:** {'Linked' if p['nin_linked']=='YES' else 'Not linked'}",
+        "---",
+        f"*medID · {datetime.now().strftime('%Y-%m-%d %H:%M')}*"
     ]
-    for c in p['conditions']:
-        lines.append(f"- {c}")
-    lines.extend(["", "### Treatment Timeline"])
-    for v in h:
-        lines.append(f"- **{v['date']}** — {v['hospital']}: {v['diagnosis']}")
-    lines.extend(["", "### Risk Factors"])
-    for c in p['conditions']:
-        lines.append(f"- {c}")
-    for a in p.get('allergies', []):
-        lines.append(f"- Allergy: {a}")
-    lines.extend(["", "### Medication Warnings"])
-    for m in p.get('medications', []):
-        lines.append(f"- {m}")
-    lines.extend(["", "### Emergency Alerts"])
-    kw = {'asthma', 'diabetes', 'hypertension', 'stroke', 'pregnancy', 'anaphylaxis', 'allerg'}
-    for a in p.get('allergies', []):
-        lines.append(f"- ⚠️ {a}")
-    for c in p['conditions']:
-        if any(k in c.lower() for k in kw):
-            lines.append(f"- 🚨 {c}")
-    lines.extend(["", "---", f"*Generated by MediVault PHR · {datetime.now().strftime('%Y-%m-%d %H:%M')}*"])
     return "\n".join(lines)
 
 # ── RENDER ──
@@ -395,7 +387,17 @@ def render_patient_record(p):
         st.markdown(f"**Blood Group:** `{p['blood_group']}`")
         nin = p.get('nin_linked', 'NO')
         b = f"<span class='badge-green'>YES</span>" if nin == 'YES' else f"<span class='badge-red'>NO</span>"
-        st.markdown(f"**NIN:** {b}", unsafe_allow_html=True)
+        st.markdown(f"**NIN Linked:** {b}", unsafe_allow_html=True)
+        with st.expander("Link / Unlink NIN"):
+            nin_input = st.text_input("NIN Number", placeholder="Enter 11-digit NIN", key=f"nin_{p['patient_id']}")
+            if st.button("Link NIN", key=f"link_nin_{p['patient_id']}"):
+                st.session_state.PATIENTS[p['patient_id']]['nin_linked'] = "YES"
+                st.success("NIN linked!")
+                st.rerun()
+            if nin == "YES" and st.button("Unlink NIN", key=f"unlink_nin_{p['patient_id']}"):
+                st.session_state.PATIENTS[p['patient_id']]['nin_linked'] = "NO"
+                st.success("NIN unlinked!")
+                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<div class='card-white'>", unsafe_allow_html=True)
@@ -440,32 +442,62 @@ def render_medical_history(history):
 def render_edit_form(p):
     st.markdown("<div class='card-white'>", unsafe_allow_html=True)
     st.markdown("### Edit Medical Record")
-    tabs = st.tabs(["Conditions & Meds", "Add New Visit"])
+    pid = p['patient_id']
+    history = st.session_state.PATIENTS[pid].get("medical_history", [])
+    hospitals = list(set(v["hospital"] for v in history)) if history else []
+    tabs = st.tabs(["Edit / Delete Visit", "Add New Visit"])
     with tabs[0]:
-        nc = st.text_area("Conditions (one per line)", value="\n".join(p.get("conditions", [])), key="ec")
-        na = st.text_area("Allergies (one per line)", value="\n".join(p.get("allergies", [])), key="ea")
-        nm = st.text_area("Medications (one per line)", value="\n".join(p.get("medications", [])), key="em")
-        if st.button("Save", type="primary", key="save_med"):
-            update_patient(p['patient_id'], {
-                "conditions": [x.strip() for x in nc.split("\n") if x.strip()],
-                "allergies": [x.strip() for x in na.split("\n") if x.strip()],
-                "medications": [x.strip() for x in nm.split("\n") if x.strip()]
-            })
-            st.success("Saved!")
-            st.rerun()
+        if not hospitals:
+            st.info("No hospital records to edit.")
+        else:
+            sel_hosp = st.selectbox("Select hospital", hospitals, key="sel_hosp")
+            entries = [v for v in history if v["hospital"] == sel_hosp]
+            if entries:
+                idx = st.selectbox("Select date", range(len(entries)), format_func=lambda i: entries[i]["date"], key="sel_visit_idx")
+                entry = entries[idx]
+                ed_dx = st.text_input("Diagnosis", value=entry.get("diagnosis", ""), key="ed_dx")
+                ed_notes = st.text_area("Notes", value=entry.get("notes", ""), key="ed_notes")
+                ed_meds = st.text_input("Medications (comma-sep)", value=", ".join(entry.get("medications_prescribed", [])), key="ed_meds")
+                ed_doc = st.text_input("Doctor", value=entry.get("doctor", ""), key="ed_doc")
+                col_save, col_del = st.columns([1, 1])
+                with col_save:
+                    if st.button("Save Changes", type="primary", use_container_width=True, key="save_edit_visit"):
+                        hv = st.session_state.PATIENTS[pid]["medical_history"]
+                        for i, v in enumerate(hv):
+                            if v["hospital"] == sel_hosp and v["date"] == entry["date"]:
+                                hv[i]["diagnosis"] = ed_dx
+                                hv[i]["notes"] = ed_notes
+                                hv[i]["medications_prescribed"] = [x.strip() for x in ed_meds.split(",") if x.strip()]
+                                hv[i]["doctor"] = ed_doc
+                                break
+                        st.success("Visit updated!")
+                        st.rerun()
+                with col_del:
+                    if st.button("Delete Visit", use_container_width=True, key="del_visit"):
+                        hv = st.session_state.PATIENTS[pid]["medical_history"]
+                        st.session_state.PATIENTS[pid]["medical_history"] = [v for v in hv if not (v["hospital"] == sel_hosp and v["date"] == entry["date"])]
+                        st.success("Visit deleted!")
+                        st.rerun()
     with tabs[1]:
         vh = st.text_input("Hospital", placeholder="e.g. LUTH", key="evh")
-        vd = st.date_input("Date", key="evd")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            vy = st.text_input("Year", placeholder="YYYY", max_chars=4, key="evy")
+        with c2:
+            vm = st.text_input("Month", placeholder="MM", max_chars=2, key="evmth")
+        with c3:
+            vd = st.text_input("Day", placeholder="DD", max_chars=2, key="evd")
         vdx = st.text_input("Diagnosis", key="evdx")
         vn = st.text_area("Notes", key="evn")
-        vm = st.text_input("Medications (comma-sep)", key="evm")
+        vm2 = st.text_input("Medications (comma-sep)", key="evm2")
         vdr = st.text_input("Doctor", key="evdr")
         if st.button("Add Visit", type="primary", key="save_visit"):
             if vh and vdx:
-                add_history_entry(p['patient_id'], {
-                    "hospital": vh, "date": str(vd),
+                date_str = f"{vy}/{vm}/{vd}" if vy and vm and vd else "Unknown"
+                add_history_entry(pid, {
+                    "hospital": vh, "date": date_str,
                     "diagnosis": vdx, "notes": vn or "No notes.",
-                    "medications_prescribed": [x.strip() for x in vm.split(",") if x.strip()],
+                    "medications_prescribed": [x.strip() for x in vm2.split(",") if x.strip()],
                     "doctor": vdr or "Unknown", "department": "General"
                 })
                 st.success("Visit added!")
@@ -481,37 +513,41 @@ def render_edit_form(p):
 # ── SIDEBAR ──
 with st.sidebar:
     st.markdown("<div style='text-align:center;padding:0.5rem 0;'>"
-                "<h2 style='color:#000000;margin:0;border:none;'>🏥 MediVault PHR</h2>"
-                "<p style='color:#333333;font-size:0.8rem;margin:0;'>Hospital Access Portal</p></div>",
+                "<h2 style='color:#000000;margin:0;border:none;'>medID</h2>"
+                "<p style='color:#333333;font-size:0.8rem;margin:0;'>Patient Identity Portal</p></div>",
                 unsafe_allow_html=True)
     st.divider()
 
     if not st.session_state.hosp_auth:
-        st.markdown("#### 🔐 Hospital Login")
-        hc = st.text_input("Hospital Code", placeholder="e.g. HOSP-001", key="side_hc", label_visibility="collapsed")
-        hp = st.text_input("PIN", type="password", placeholder="0000", key="side_hp", label_visibility="collapsed")
-        if st.button("🔑 Authenticate", use_container_width=True, key="side_auth"):
-            if auth_hospital(hc, hp):
-                st.session_state.hosp_auth = True
-                st.session_state.hosp_code = hc
-                st.rerun()
-            else:
-                st.error("❌ Invalid credentials")
+        st.markdown("<div style='text-align:center;padding:0.5rem 0;color:#999;font-size:0.85rem;'>Not logged in</div>", unsafe_allow_html=True)
     else:
-        hname = HOSPITALS.get(st.session_state.hosp_code, {}).get("name", "")
+        hname = st.session_state.HOSPITALS.get(st.session_state.hosp_code, {}).get("name", "")
         st.markdown(f"<span class='badge-green'>✅ {hname}</span>", unsafe_allow_html=True)
-        with st.expander("🔑 Change PIN"):
-            cur = st.text_input("Current PIN", type="password", key="chg_cur")
-            new1 = st.text_input("New PIN", type="password", key="chg_new1")
-            new2 = st.text_input("Confirm PIN", type="password", key="chg_new2")
+        st.markdown(f"**Code:** `{st.session_state.hosp_code}`", unsafe_allow_html=True)
+        with st.expander("⚙️ Settings"):
+            st.markdown("#### Hospital Info")
+            new_name = st.text_input("Hospital Name", value=hname, key="set_hosp_name")
+            if st.button("Update Name", use_container_width=True, key="set_save_name"):
+                st.session_state.HOSPITALS[st.session_state.hosp_code]["name"] = new_name
+                st.success("Name updated!")
+                st.rerun()
+            st.divider()
+            st.markdown("#### Change PIN")
+            cur = st.text_input("Current PIN", type="password", placeholder="0000", key="chg_cur")
+            new1 = st.text_input("New PIN", type="password", placeholder="New PIN (4+ digits)", key="chg_new1")
+            new2 = st.text_input("Confirm PIN", type="password", placeholder="Confirm new PIN", key="chg_new2")
             if st.button("Update PIN", use_container_width=True, key="chg_btn"):
-                h = HOSPITALS.get(st.session_state.hosp_code)
-                if h and cur == h["admin_pin"] and new1 == new2 and len(new1) >= 4:
-                    h["admin_pin"] = new1
+                h = st.session_state.HOSPITALS.get(st.session_state.hosp_code)
+                cur_stripped = cur.strip() if cur else ""
+                new1_stripped = new1.strip() if new1 else ""
+                new2_stripped = new2.strip() if new2 else ""
+                if h and cur_stripped == str(h["admin_pin"]).strip() and new1_stripped == new2_stripped and len(new1_stripped) >= 4:
+                    h["admin_pin"] = new1_stripped
                     st.success("✅ PIN updated")
-                elif not h or cur != h["admin_pin"]:
+                    st.rerun()
+                elif not h or cur_stripped != str(h["admin_pin"]).strip():
                     st.error("❌ Current PIN incorrect")
-                elif new1 != new2:
+                elif new1_stripped != new2_stripped:
                     st.error("❌ New PINs don't match")
                 else:
                     st.error("❌ PIN must be at least 4 characters")
@@ -526,29 +562,65 @@ with st.sidebar:
     ai_badge = "badge-green" if st.session_state.gemini_api_key else "badge-blue"
     st.markdown(f"<span class='{ai_badge}'>{ai_status}</span>", unsafe_allow_html=True)
 
-    st.markdown("**Hospital PIN:** `0000`")
-    st.caption("v2.0 · 234Hackathon 2026")
-
 # ── MAIN ──
 st.markdown("""
 <div style='display:flex;justify-content:space-between;align-items:center;padding:0.2rem 0 0 0;'>
     <div>
-        <h1 style='color:#000000;margin:0;font-size:1.6rem;border:none;'>🏥 MediVault PHR Pro</h1>
-        <p style='color:#333333;margin:0;font-size:0.85rem;'>Portable Health Record · Hospital Access Only</p>
+        <h1 style='color:#000000;margin:0;font-size:1.6rem;border:none;'>medID</h1>
+        <p style='color:#333333;margin:0;font-size:0.85rem;'>Patient Identity Portal</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
 st.divider()
 
 if not st.session_state.hosp_auth:
-    st.markdown("<div style='text-align:center;padding:3rem 1rem;'>"
-                "<div style='font-size:4rem;margin-bottom:1rem;'>🏥</div>"
-                "<h2 style='color:#000000;'>Welcome to MediVault PHR</h2>"
-                "<p style='color:#333333;max-width:500px;margin:0 auto 1.5rem auto;'>"
-                "Authorized hospital staff can access patient records securely. "
-                "Authenticate via the sidebar to begin.</p>"
-                "<p style='color:#666666;font-size:0.85rem;'>Demo: HOSP-001 / PIN: 0000</p>"
-                "</div>", unsafe_allow_html=True)
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    with col_center:
+        st.markdown("<div style='text-align:center;padding:1rem 0 0.5rem 0;'>"
+                    "<div style='font-size:3rem;margin-bottom:0.5rem;'>🆔</div>"
+                    "<h2 style='color:#000000;margin:0;'>Welcome to medID</h2>"
+                    "<p style='color:#333333;margin:0.3rem 0 1rem 0;'>Patient Identity Portal</p>"
+                    "</div>", unsafe_allow_html=True)
+        auth_tab = st.radio("", ["Login", "Sign Up"], horizontal=True, key="main_auth_tab", label_visibility="collapsed")
+        if auth_tab == "Login":
+            if st.session_state.get("reg_success"):
+                st.success("Hospital registered successfully! You can now log in.")
+                st.session_state.reg_success = False
+            st.markdown("<div class='card-white'>", unsafe_allow_html=True)
+            st.markdown("#### Hospital Login")
+            hc = st.text_input("Hospital Code", placeholder="e.g. HOSP-001", key="main_hc")
+            hp = st.text_input("PIN", type="password", placeholder="Enter your PIN", key="main_hp")
+            if st.button("Authenticate", use_container_width=True, type="primary", key="main_auth"):
+                if auth_hospital(hc, hp):
+                    st.session_state.hosp_auth = True
+                    st.session_state.hosp_code = hc
+                    st.rerun()
+                else:
+                    st.error("Invalid hospital code or PIN")
+            st.markdown("<p style='text-align:center;color:#999;font-size:0.85rem;margin-top:0.5rem;'>Demo: HOSP-001 / PIN: 0000</p>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='card-white'>", unsafe_allow_html=True)
+            st.markdown("#### Hospital Sign Up")
+            reg_code = st.text_input("Hospital Code", placeholder="e.g. HOSP-003", key="main_reg_code")
+            reg_name = st.text_input("Hospital Name", placeholder="e.g. City General Hospital", key="main_reg_name")
+            reg_pin = st.text_input("Create PIN", type="password", placeholder="Minimum 4 digits", key="main_reg_pin")
+            reg_confirm = st.text_input("Confirm PIN", type="password", placeholder="Re-enter PIN", key="main_reg_confirm")
+            if st.button("Register Hospital", use_container_width=True, type="primary", key="main_reg_btn"):
+                if not reg_code or not reg_name or not reg_pin:
+                    st.error("All fields required")
+                elif reg_pin != reg_confirm:
+                    st.error("PINs don't match")
+                elif len(reg_pin) < 4:
+                    st.error("PIN must be at least 4 characters")
+                elif reg_code in st.session_state.HOSPITALS:
+                    st.error("Hospital code already exists")
+                else:
+                    st.session_state.HOSPITALS[reg_code] = {"name": reg_name, "admin_pin": reg_pin}
+                    st.session_state.main_auth_tab = "Login"
+                    st.session_state.reg_success = True
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 else:
     # ── SEARCH ──
     st.markdown("<div class='search-container'>"
@@ -570,12 +642,47 @@ else:
     st.markdown("<div style='text-align:center;margin:0.5rem 0;'>"
                 "<span style='color:#999;font-size:0.8rem;'>or scan fingerprint</span></div>",
                 unsafe_allow_html=True)
-    if st.button("🖐️ Tap Fingerprint", use_container_width=True, key="fp_scan"):
-        pid = random.choice(list(PATIENTS.keys()))
-        p = PATIENTS[pid]
-        st.session_state.hospital_target = p
-        st.session_state.hosp_access_granted = False
-        st.info(f"Fingerprint matched — {p['name']}")
+    fp_state = st.session_state.fp_status
+    fp_class = {"idle": "fp-svg-idle", "scanning": "fp-svg-scanning", "success": "fp-svg-success", "fail": "fp-svg-fail"}
+    fp_text = {"idle": "Tap to scan", "scanning": "Scanning...", "success": "", "fail": "No match found"}
+    fp_text_color = {"idle": "#999", "scanning": "#1565C0", "success": "#2e7d32", "fail": "#c62828"}
+    st.markdown(f"""
+<div class='fp-container'>
+    <svg class='fp-svg {fp_class.get(fp_state, "fp-svg-idle")}' viewBox='0 0 48 48' onclick=''>
+        <circle class='fp-outer' cx='24' cy='18' r='10' fill='none' stroke-width='2.5'/>
+        <path class='fp-inner' d='M14 38c0-5.5 4.5-10 10-10s10 4.5 10 10M18 32c0-3.3 2.7-6 6-6s6 2.7 6 6M22 28l2 4 4-2' stroke-width='2' fill='none' stroke-linecap='round'/>
+        <circle cx='24' cy='18' r='3' fill='currentColor' opacity='0.4'/>
+    </svg>
+    <div class='fp-status' style='color:{fp_text_color.get(fp_state, "#999")}'>{fp_text.get(fp_state, "")}</div>
+</div>""", unsafe_allow_html=True)
+    if fp_state == "idle" and st.button("Scan Fingerprint", use_container_width=True, key="fp_btn"):
+        st.session_state.fp_status = "scanning"
+        st.rerun()
+    if fp_state == "scanning":
+        with st.spinner(""):
+            time.sleep(0.8)
+            if random.random() < 0.85:
+                pid = random.choice(list(st.session_state.PATIENTS.keys()))
+                st.session_state.fp_status = "success"
+                st.session_state.fp_patient = pid
+            else:
+                st.session_state.fp_status = "fail"
+            st.rerun()
+    if fp_state == "success":
+        pid = st.session_state.fp_patient
+        p = st.session_state.PATIENTS[pid]
+        st.success(f"Matched — {p['name']}")
+        if st.button("Continue with this patient", type="primary", use_container_width=True, key="fp_continue"):
+            st.session_state.hospital_target = p
+            st.session_state.hosp_access_granted = False
+            st.session_state.fp_status = "idle"
+            st.session_state.fp_patient = None
+            st.rerun()
+    if fp_state == "fail":
+        st.error("No fingerprint match found")
+        if st.button("Try Again", use_container_width=True, key="fp_retry"):
+            st.session_state.fp_status = "idle"
+            st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ── RECORD ──
@@ -583,15 +690,30 @@ else:
         p = st.session_state.hospital_target
 
         if not st.session_state.hosp_access_granted:
-            c1, c2 = st.columns([1, 1])
-            with c1:
-                if st.button("📋 Request Access", use_container_width=True, key="req_access"):
-                    st.info("⏳ Request sent to patient...")
-            with c2:
-                if st.button("✅ Simulate Patient Approval", type="primary", use_container_width=True, key="approve"):
+            st.markdown("<div class='card-white'>", unsafe_allow_html=True)
+            st.markdown("### Access Requirements")
+            consent = st.checkbox("Patient consent obtained", key="access_consent")
+            reason = st.selectbox("Reason for access", ["", "Emergency", "Routine Review", "Referral", "Administrative", "Lab Results"], key="access_reason")
+            doctor = st.text_input("Attending Doctor", placeholder="Enter doctor's name", key="access_doctor")
+            can_proceed = consent and reason and doctor
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                if st.button("Request Access", use_container_width=True, key="req_access"):
+                    if can_proceed:
+                        st.info("Request sent to patient...")
+                    else:
+                        st.warning("Complete all requirements first")
+            with col_b:
+                if st.button("Simulate Patient Approval", type="primary", use_container_width=True, key="approve", disabled=not can_proceed):
                     st.session_state.hosp_access_granted = True
                     st.session_state.active_patient = p
                     st.rerun()
+            st.markdown("---")
+            if st.button("🚨 Emergency Override", use_container_width=True, key="emergency_bypass"):
+                st.session_state.hosp_access_granted = True
+                st.session_state.active_patient = p
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.success("Access approved")
             render_patient_record(p)
