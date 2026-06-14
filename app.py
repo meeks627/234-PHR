@@ -5,133 +5,76 @@ from datetime import datetime, date
 
 st.set_page_config(page_title="medID", page_icon="🆔", layout="wide")
 
-dark = st.session_state.get("dark_mode", False)
-if dark:
-    LIGHT_DARK_BG = "#0d1b2a"
-    LIGHT_DARK_CARD = "#1b2a3a"
-    LIGHT_DARK_TEXT = "#ffffff"
-    LIGHT_DARK_SIDEBAR = "#0a1628"
-    LIGHT_DARK_BORDER = "rgba(255,255,255,0.1)"
-    LIGHT_DARK_INPUT_BG = "rgba(255,255,255,0.08)"
-    LIGHT_DARK_ACCENT = "#64b5f6"
-    LIGHT_DARK_MUTED = "#90caf9"
-else:
-    LIGHT_DARK_BG = "#ffffff"
-    LIGHT_DARK_CARD = "#f8f9fa"
-    LIGHT_DARK_TEXT = "#000000"
-    LIGHT_DARK_SIDEBAR = "#f0f2f6"
-    LIGHT_DARK_BORDER = "#e0e0e0"
-    LIGHT_DARK_INPUT_BG = "#ffffff"
-    LIGHT_DARK_ACCENT = "#1565C0"
-    LIGHT_DARK_MUTED = "#1565C0"
-
-st.markdown(f"""
+st.markdown("""
 <style>
-.stApp {{ background: {LIGHT_DARK_BG}; }}
-h1, h2, h3 {{ color: {LIGHT_DARK_TEXT}; font-weight: 700; }}
-.stMarkdown p, .stMarkdown li, .stMarkdown span {{ color: {LIGHT_DARK_TEXT}; }}
-.stMarkdown strong {{ color: {LIGHT_DARK_TEXT}; font-weight: 700; }}
-.stMarkdown em {{ color: {LIGHT_DARK_ACCENT}; }}
-.stMarkdown code {{ color: #d63384 !important; background: {LIGHT_DARK_CARD} !important; }}
-a {{ color: {LIGHT_DARK_ACCENT}; font-weight: 500; }}
-.st-dv {{ border-color: {LIGHT_DARK_BORDER} !important; }}
+.stApp { background: #ffffff; }
+h1, h2, h3 { color: #000000; font-weight: 700; }
+.stMarkdown p, .stMarkdown li, .stMarkdown span { color: #000000; }
+.stMarkdown strong { color: #000000; font-weight: 700; }
+.stMarkdown em { color: #1565C0; }
+.stMarkdown code { color: #d63384 !important; background: #f5f5f5 !important; }
+a { color: #1565C0; font-weight: 500; }
+.st-dv { border-color: #e0e0e0 !important; }
 
-.card {{
-    background: {LIGHT_DARK_CARD}; border-radius: 12px; padding: 1.3rem; margin-bottom: 1rem;
-    border: 1px solid {LIGHT_DARK_BORDER}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}}
-.card h3, .card p, .card li, .card span, .card strong {{ color: {LIGHT_DARK_TEXT} !important; }}
+.card { background: #f8f9fa; border-radius: 12px; padding: 1.3rem; margin-bottom: 1rem; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card h3, .card p, .card li, .card span, .card strong { color: #000000 !important; }
 
-.card-white {{
-    background: {LIGHT_DARK_BG}; border-radius: 12px; padding: 1.3rem; margin-bottom: 1rem;
-    border: 1px solid {LIGHT_DARK_BORDER}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}}
-.card-white h3 {{ color: {LIGHT_DARK_TEXT} !important; font-weight: 700; }}
-.card-white p, .card-white li, .card-white span {{ color: {LIGHT_DARK_TEXT} !important; }}
-.card-white strong {{ color: {LIGHT_DARK_TEXT} !important; font-weight: 700; }}
-.card-white .stMetric {{ background: {LIGHT_DARK_CARD}; border: 1px solid {LIGHT_DARK_BORDER}; }}
-.card-white [data-testid="stMetricValue"] {{ color: {LIGHT_DARK_TEXT} !important; font-weight: 800; }}
-.card-white [data-testid="stMetricLabel"] p {{ color: {LIGHT_DARK_MUTED} !important; }}
+.card-white { background: #ffffff; border-radius: 12px; padding: 1.3rem; margin-bottom: 1rem; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card-white h3 { color: #000000 !important; font-weight: 700; }
+.card-white p, .card-white li, .card-white span { color: #000000 !important; }
+.card-white strong { color: #000000 !important; font-weight: 700; }
+.card-white .stMetric { background: #f5f5f5; border: 1px solid #e0e0e0; }
+.card-white [data-testid="stMetricValue"] { color: #000000 !important; font-weight: 800; }
+.card-white [data-testid="stMetricLabel"] p { color: #333333 !important; }
 
-section[data-testid="stSidebar"] {{ background: {LIGHT_DARK_SIDEBAR}; border-right: 1px solid {LIGHT_DARK_BORDER}; }}
-section[data-testid="stSidebar"] .stMarkdown p {{ color: {LIGHT_DARK_TEXT}; }}
-section[data-testid="stSidebar"] .stMarkdown strong {{ color: {LIGHT_DARK_TEXT}; font-weight: 700; }}
-section[data-testid="stSidebar"] hr {{ border-color: {LIGHT_DARK_BORDER}; }}
-section[data-testid="stSidebar"] .stButton button {{
-    background: {LIGHT_DARK_CARD}; color: {LIGHT_DARK_TEXT}; border: 1px solid {LIGHT_DARK_BORDER}; border-radius: 8px;
-}}
-section[data-testid="stSidebar"] .stTextInput input {{
-    background: {LIGHT_DARK_INPUT_BG}; color: {LIGHT_DARK_TEXT}; border: 1px solid {LIGHT_DARK_BORDER}; border-radius: 8px;
-}}
-section[data-testid="stSidebar"] .stTextInput input::placeholder {{ color: #999; }}
+section[data-testid="stSidebar"] { background: #f0f2f6; border-right: 1px solid #d0d0d0; }
+section[data-testid="stSidebar"] .stMarkdown p { color: #000000; }
+section[data-testid="stSidebar"] .stMarkdown strong { color: #000000; font-weight: 700; }
+section[data-testid="stSidebar"] hr { border-color: #d0d0d0; }
+section[data-testid="stSidebar"] .stButton button { background: #e0e0e0; color: #000000; border: 1px solid #ccc; border-radius: 8px; }
+section[data-testid="stSidebar"] .stTextInput input { background: #ffffff; color: #000000; border: 1px solid #ccc; border-radius: 8px; }
+section[data-testid="stSidebar"] .stTextInput input::placeholder { color: #999; }
 
-.stButton button {{ border-radius: 8px; font-weight: 500; }}
-button[kind="primary"] {{
-    background: {LIGHT_DARK_ACCENT} !important; border: none !important; font-weight: 600 !important; color: white !important;
-}}
-.stButton button:not([kind="primary"]) {{
-    background: {LIGHT_DARK_CARD}; color: {LIGHT_DARK_TEXT}; border: 1px solid {LIGHT_DARK_BORDER};
-}}
+.stButton button { border-radius: 8px; font-weight: 500; }
+button[kind="primary"] { background: #1565C0 !important; border: none !important; font-weight: 600 !important; color: white !important; }
+.stButton button:not([kind="primary"]) { background: #e0e0e0; color: #000000; border: 1px solid #ccc; }
 
-.stTextInput input, .stTextArea textarea, .stDateInput input {{
-    background: {LIGHT_DARK_INPUT_BG} !important; color: {LIGHT_DARK_TEXT} !important;
-    border: 1px solid {LIGHT_DARK_BORDER} !important; border-radius: 8px !important;
-}}
-.stTextInput input::placeholder, .stTextArea textarea::placeholder {{ color: #999 !important; }}
-.stTextInput input:focus, .stTextArea textarea:focus {{ border-color: {LIGHT_DARK_ACCENT} !important; }}
-[data-testid="stChatInput"] textarea, [data-testid="stChatInput"] input {{
-    color: {LIGHT_DARK_TEXT} !important; background: {LIGHT_DARK_INPUT_BG} !important; border: 1px solid {LIGHT_DARK_BORDER} !important;
-}}
+.stTextInput input, .stTextArea textarea, .stDateInput input { background: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; border-radius: 8px !important; }
+.stTextInput input::placeholder, .stTextArea textarea::placeholder { color: #999 !important; }
+.stTextInput input:focus, .stTextArea textarea:focus { border-color: #1565C0 !important; }
+[data-testid="stChatInput"] textarea, [data-testid="stChatInput"] input { color: #000000 !important; background: #ffffff !important; border: 1px solid #ccc !important; }
 
-.stAlert {{ border-left-width: 4px !important; }}
-.stSuccess {{ border-left-color: #4caf50 !important; }}
-.stError {{ border-left-color: #f44336 !important; }}
+.stAlert { border-left-width: 4px !important; }
+.stSuccess { border-left-color: #4caf50 !important; }
+.stError { border-left-color: #f44336 !important; }
 
-.stMetric {{ background: {LIGHT_DARK_CARD}; border-radius: 8px; padding: 0.8rem; border: 1px solid {LIGHT_DARK_BORDER}; }}
-[data-testid="stMetricValue"] {{ color: {LIGHT_DARK_TEXT} !important; font-weight: 800; }}
-[data-testid="stMetricLabel"] p {{ color: {LIGHT_DARK_MUTED} !important; font-weight: 600 !important; }}
+.stMetric { background: #f5f5f5; border-radius: 8px; padding: 0.8rem; border: 1px solid #e0e0e0; }
+[data-testid="stMetricValue"] { color: #000000 !important; font-weight: 800; }
+[data-testid="stMetricLabel"] p { color: #333 !important; font-weight: 600 !important; }
 
-.badge-green {{
-    display: inline-block; background: #e8f5e9; color: #2e7d32;
-    padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem;
-    font-weight: 700; border: 1px solid #4caf50;
-}}
-.badge-red {{
-    display: inline-block; background: #fce4ec; color: #c62828;
-    padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem;
-    font-weight: 700; border: 1px solid #e53935;
-}}
-.badge-blue {{
-    display: inline-block; background: #e3f2fd; color: {LIGHT_DARK_ACCENT};
-    padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem;
-    font-weight: 700; border: 1px solid #42a5f5;
-}}
+.badge-green { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem; font-weight: 700; border: 1px solid #4caf50; }
+.badge-red { display: inline-block; background: #fce4ec; color: #c62828; padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem; font-weight: 700; border: 1px solid #e53935; }
+.badge-blue { display: inline-block; background: #e3f2fd; color: #1565C0; padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.78rem; font-weight: 700; border: 1px solid #42a5f5; }
 
-.search-container {{
-    background: {LIGHT_DARK_CARD}; border-radius: 12px; padding: 1.5rem 2rem;
-    margin: 1rem 0; border: 1px solid {LIGHT_DARK_BORDER}; text-align: center;
-}}
-.search-title {{ color: {LIGHT_DARK_ACCENT}; font-size: 0.85rem; margin-bottom: 0.5rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }}
-.search-container .stTextInput input {{ background: {LIGHT_DARK_INPUT_BG} !important; border-color: {LIGHT_DARK_ACCENT} !important; }}
+.search-container { background: #f8f9fa; border-radius: 12px; padding: 1.5rem 2rem; margin: 1rem 0; border: 1px solid #e0e0e0; text-align: center; }
+.search-title { color: #1565C0; font-size: 0.85rem; margin-bottom: 0.5rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
+.search-container .stTextInput input { background: #ffffff !important; border-color: #1565C0 !important; }
 
-.section-label {{
-    color: {LIGHT_DARK_ACCENT}; font-size: 0.78rem; text-transform: uppercase;
-    letter-spacing: 1.5px; margin-bottom: 0.75rem; font-weight: 700;
-}}
-.stAlert p {{ font-weight: 500; color: {LIGHT_DARK_TEXT} !important; }}
-.emoji {{ font-size: 1.5em !important; }}
-h1 .emoji {{ font-size: 2rem !important; }}
-.badge-green, .badge-red, .badge-blue {{ font-size: 0.9rem !important; }}
-.fp-container {{ text-align: center; padding: 1rem 0; }}
-.fp-svg {{ width: 64px; height: 64px; cursor: pointer; transition: all 0.3s; }}
-.fp-svg:hover {{ transform: scale(1.1); }}
-.fp-svg-idle .fp-outer {{ stroke: #999; }} .fp-svg-idle .fp-inner {{ fill: #999; }}
-.fp-svg-scanning .fp-outer {{ stroke: {LIGHT_DARK_ACCENT}; }} .fp-svg-scanning .fp-inner {{ fill: {LIGHT_DARK_ACCENT}; }}
-.fp-svg-scanning {{ animation: fp-pulse 0.8s ease-in-out infinite; }}
-.fp-svg-success .fp-outer {{ stroke: #2e7d32; }} .fp-svg-success .fp-inner {{ fill: #2e7d32; }}
-.fp-svg-fail .fp-outer {{ stroke: #c62828; }} .fp-svg-fail .fp-inner {{ fill: #c62828; }}
-@keyframes fp-pulse {{ 0% {{ opacity: 0.6; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.6; }} }}
-.fp-status {{ font-size: 0.9rem; margin-top: 0.3rem; font-weight: 600; }}
+.section-label { color: #1565C0; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.75rem; font-weight: 700; }
+.stAlert p { font-weight: 500; color: #000000 !important; }
+.emoji { font-size: 1.5em !important; }
+h1 .emoji { font-size: 2rem !important; }
+.badge-green, .badge-red, .badge-blue { font-size: 0.9rem !important; }
+.fp-container { text-align: center; padding: 1rem 0; }
+.fp-svg { width: 64px; height: 64px; cursor: pointer; transition: all 0.3s; }
+.fp-svg:hover { transform: scale(1.1); }
+.fp-svg-idle .fp-outer { stroke: #999; } .fp-svg-idle .fp-inner { fill: #999; }
+.fp-svg-scanning .fp-outer { stroke: #1565C0; } .fp-svg-scanning .fp-inner { fill: #1565C0; }
+.fp-svg-scanning { animation: fp-pulse 0.8s ease-in-out infinite; }
+.fp-svg-success .fp-outer { stroke: #2e7d32; } .fp-svg-success .fp-inner { fill: #2e7d32; }
+.fp-svg-fail .fp-outer { stroke: #c62828; } .fp-svg-fail .fp-inner { fill: #c62828; }
+@keyframes fp-pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+.fp-status { font-size: 0.9rem; margin-top: 0.3rem; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -260,7 +203,7 @@ for key, val in {
     "chat_history": [], "summary": None, "edit_mode": False,
     "fp_status": "idle", "fp_patient": None,
     "access_consent": False, "access_reason": "", "access_doctor": "",
-    "reg_success": False, "dark_mode": False,
+    "reg_success": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -545,12 +488,6 @@ with st.sidebar:
         st.markdown(f"<span class='badge-green'>✅ {hname}</span>", unsafe_allow_html=True)
         st.markdown(f"**Code:** `{st.session_state.hosp_code}`", unsafe_allow_html=True)
         with st.expander("⚙️ Settings"):
-            st.markdown("#### Appearance")
-            dark_toggle = st.toggle("Dark Mode", value=st.session_state.dark_mode, key="dark_toggle")
-            if dark_toggle != st.session_state.dark_mode:
-                st.session_state.dark_mode = dark_toggle
-                st.rerun()
-            st.divider()
             st.markdown("#### Hospital Info")
             new_name = st.text_input("Hospital Name", value=hname, key="set_hosp_name")
             if st.button("Update Name", use_container_width=True, key="set_save_name"):
@@ -735,13 +672,15 @@ else:
                     st.session_state.hosp_access_granted = True
                     st.session_state.active_patient = p
                     st.rerun()
-            st.markdown("---")
-            if st.button("🚨 Emergency Override", use_container_width=True, key="emergency_bypass"):
-                st.session_state.hosp_access_granted = True
-                st.session_state.active_patient = p
-                st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
         else:
+            if st.button("← Back to Search", key="back_to_search"):
+                st.session_state.hospital_target = None
+                st.session_state.hosp_access_granted = False
+                st.session_state.active_patient = None
+                st.session_state.chat_history = []
+                st.session_state.summary = None
+                st.rerun()
             st.success("Access approved")
             render_patient_record(p)
             render_medical_history(p.get("medical_history", []))
